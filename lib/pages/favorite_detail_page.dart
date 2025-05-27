@@ -24,7 +24,18 @@ class _FavoriteDetailPageState extends ConsumerState<FavoriteDetailPage> {
 
   Future<void> _loadChat() async {
     final result = await ApiService.fetchFavoriteChatDetail(widget.favoriteId);
-    if (mounted) {
+    if (mounted && result != null) {
+      // ✅ 보상 텍스트 가공
+      String? reward = result.rewardText?.trim();
+      if (reward != null && reward.isNotEmpty) {
+        if (reward == '해당사항이 없습니다.') {
+          reward = '아직 보상 제도가 없는 항목입니다.';
+        }
+        result.messages.add(
+          Message(sender: 'system', text: reward),
+        );
+      }
+      print('🧪 받아온 chatId: ${result.chatId}');
       setState(() => chat = result);
     }
   }
@@ -59,7 +70,11 @@ class _FavoriteDetailPageState extends ConsumerState<FavoriteDetailPage> {
 
     if (shouldDelete == true) {
       print('🗑️ 즐겨찾기 삭제 시도: chatId = ${chat!.chatId}');
-      final success = await ApiService.toggleFavorite(chatId: chat!.chatId, isAdding: false);
+      final success = await ApiService.toggleFavorite(
+          chatId: chat!.chatId,
+          isAdding: false,
+          favoriteId: chat!.id,
+      );
       if (success && mounted) {
         Navigator.pop(context, true); // ✅ true 값을 반환하며 pop
       }
@@ -103,9 +118,13 @@ class _FavoriteDetailPageState extends ConsumerState<FavoriteDetailPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        title: const Text('대화 내용'),
+        surfaceTintColor: Colors.white,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.2),
+        title: const Text(
+          '대화 내용',
+          style: TextStyle(color: Colors.black),
+        ),
         actions: [
           IconButton(
             icon: Icon(
@@ -146,6 +165,27 @@ class _FavoriteDetailPageState extends ConsumerState<FavoriteDetailPage> {
             const SizedBox(height: 16),
             ...chat!.messages.map((msg) {
               final isUser = msg.sender == 'user';
+              String content = msg.text.trim();
+
+              if (!isUser && (content == 'end' || content.startsWith('[Disposal]'))) {
+                return const SizedBox.shrink();
+              }
+
+              bool isCategory = false;
+              bool isSubcategory = false;
+              bool isReward = false;
+
+              if (!isUser && content.startsWith('[Category]')) {
+                isCategory = true;
+                content = content.replaceFirst('[Category]', '').trim();
+              } else if (!isUser && content.startsWith('[Subcategory]')) {
+                isSubcategory = true;
+                content = content.replaceFirst('[Subcategory]', '').trim();
+              } else if (!isUser &&
+                  (content.contains('보상') || content.contains('포인트') || content.contains('리워드'))) {
+                isReward = true;
+              }
+
               return Align(
                 alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                 child: Container(
@@ -153,20 +193,22 @@ class _FavoriteDetailPageState extends ConsumerState<FavoriteDetailPage> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: isUser ? Colors.grey[300] : seedColor,
+                    color: isUser
+                        ? Colors.grey[300]
+                        : const Color(0xFF5B8B4B).withOpacity(0.85),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: SelectableText(
-                    msg.text,
+                    content,
                     style: TextStyle(
-                      fontSize: 20,
-                      height: 1.5,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
                       color: isUser ? Colors.black : Colors.white,
                     ),
                   ),
                 ),
               );
-            })
+            }),
           ],
         ),
       ),

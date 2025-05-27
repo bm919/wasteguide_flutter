@@ -124,13 +124,19 @@ class _UserInfoPageState extends ConsumerState<UserInfoPage> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (_) {
-        context.pushReplacement('/login');
-      },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('회원가입')),
+    return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 4,
+          shadowColor: Colors.black.withOpacity(0.2),
+          title: const Text('회원가입'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(), // 또는 context.pushReplacement('/login')
+          ),
+        ),
+
         body: Padding(
           padding: const EdgeInsets.all(24),
           child: Form(
@@ -239,8 +245,6 @@ class _UserInfoPageState extends ConsumerState<UserInfoPage> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
-

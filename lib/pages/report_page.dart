@@ -86,13 +86,14 @@ class _ReportErrorPageState extends State<ReportErrorPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
+        surfaceTintColor: Colors.white,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.2),
+        title: const Text('오류 신고'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
-        title: const Text('오류 신고'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

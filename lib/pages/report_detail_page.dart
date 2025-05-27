@@ -41,8 +41,13 @@ class ReportDetailPage extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        title: Text(type),
+        surfaceTintColor: Colors.white,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.2),
+        title: Text(
+          type,
+          style: const TextStyle(color: Colors.black),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),

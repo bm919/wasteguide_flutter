@@ -68,10 +68,43 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         ref.read(guideProvider.notifier).addMessage(updatedSummary);
       }
     }
-
     setState(() => _loading = false);
   }
 
+  Future<void> _loadReward() async {
+    final guide = ref.read(guideProvider);
+    if (guide.chat_id == null) {
+      print('❗ chat_id 없음. 보상 정보 요청 불가');
+      return;
+    }
+    String rewardInfo = '';
+    try {
+      final rewardResult = await ApiService.queryReward(
+        label: guide.category ?? widget.label,
+        chatId: guide.chat_id!,
+      );
+      // ✅ 응답 파싱
+      if (rewardResult == null) {
+        rewardInfo = '보상 정보를 불러오는 중 오류가 발생했습니다.';
+      } else if (rewardResult.containsKey('message') &&
+          rewardResult['message'] == '해당사항이 없습니다.') {
+        rewardInfo = '아직 보상 제도가 없는 항목입니다.';
+      } else {
+        rewardInfo = rewardResult['matched_reward'] ??
+            '보상 정보를 불러오지 못했습니다.';
+      }
+      print('🎁 보상 안내 응답: $rewardInfo');
+      // ✅ guide.messages에 보상 메시지 추가
+      if (rewardInfo.isNotEmpty && !guide.messages.contains(rewardInfo)) {
+        ref.read(guideProvider.notifier).addMessage(rewardInfo);
+      }
+    } catch (e) {
+      print('❌ 보상 정보 요청 실패: $e');
+      rewardInfo = '보상 정보를 불러오는 중 오류가 발생했습니다.';
+      ref.read(guideProvider.notifier).addMessage(rewardInfo);
+    }
+    setState(() {});
+  }
 
   void _toggleFavorite() async {
     final guide = ref.read(guideProvider);
@@ -104,12 +137,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       imageId: imageId ?? 0,
       chatId: guide.chat_id ?? 0,
     );
-
-    final exists = ref.read(favoriteProvider).any((c) =>
-    c.title == favorite.title &&
-        c.dateTime == favorite.dateTime &&
-        c.imageId == favorite.imageId
+    final favoriteProvider = StateNotifierProvider<FavoritesNotifier, List<FavoriteChat>>(
+          (ref) => FavoritesNotifier(),
     );
+    final exists = ref.read(favoriteProvider).any((c) => c.chatId == favorite.chatId);
 
     final success = await ApiService.toggleFavorite(
       chatId: chatId,
@@ -180,86 +211,79 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.2),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
             if (!isFavorited) {
               showDialog(
                 context: context,
-                builder: (context) =>
-                    AlertDialog(
-                      backgroundColor: Colors.white,
-                      // ✅ 배경색 흰색
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      title: const Text('즐겨찾기에 추가하시겠습니까?'),
-                      content: const Text(
-                            '지금 나가면 이 분리배출 가이드는 저장되지 않습니다.',
-                        style: TextStyle(fontSize: 14),
+                builder: (context) => AlertDialog(
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: const Text('즐겨찾기에 추가하시겠습니까?'),
+                  content: const Text(
+                    '지금 나가면 이 분리배출 가이드는 저장되지 않습니다.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  actions: [
+                    TextButton(
+                      style: ButtonStyle(
+                        foregroundColor: MaterialStateProperty.all<Color>(Colors.black),
+                        overlayColor: MaterialStateProperty.resolveWith<Color?>(
+                              (states) => states.contains(MaterialState.pressed)
+                              ? Colors.grey[300]
+                              : null,
+                        ),
                       ),
-                      actions: [
-                        TextButton(
-                          style: ButtonStyle(
-                            foregroundColor: MaterialStateProperty.all<Color>(
-                                Colors.black),
-                            overlayColor: MaterialStateProperty.resolveWith<
-                                Color?>(
-                                  (Set<MaterialState> states) {
-                                if (states.contains(MaterialState.pressed)) {
-                                  return Colors.grey[300];
-                                }
-                                return null; // 기본 상태에서는 투명
-                              },
-                            ),
-                          ),
-
-                          onPressed: () {
-                            Navigator.of(context).pop(); // 다이얼로그 닫고
-                            _toggleFavorite(); // 즐겨찾기 추가
-                          },
-                          child: const Text('즐겨찾기 추가하기'),
-                        ),
-                        TextButton(
-                          style: ButtonStyle(
-                            foregroundColor: MaterialStateProperty.all<Color>(
-                                Colors.black),
-                            overlayColor: MaterialStateProperty.resolveWith<
-                                Color?>(
-                                  (Set<MaterialState> states) {
-                                if (states.contains(MaterialState.pressed)) {
-                                  return Colors.grey[300];
-                                }
-                                return null; // 기본 상태에서는 투명
-                              },
-                            ),
-                          ),
-                          onPressed: () {
-                            context.go('/main'); // 그냥 나가기
-                          },
-                          child: const Text('나가기'),
-                        ),
-                      ],
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _toggleFavorite();
+                      },
+                      child: const Text('즐겨찾기 추가하기'),
                     ),
+                    TextButton(
+                      style: ButtonStyle(
+                        foregroundColor: MaterialStateProperty.all<Color>(Colors.black),
+                        overlayColor: MaterialStateProperty.resolveWith<Color?>(
+                              (states) => states.contains(MaterialState.pressed)
+                              ? Colors.grey[300]
+                              : null,
+                        ),
+                      ),
+                      onPressed: () {
+                        context.go('/main');
+                      },
+                      child: const Text('나가기'),
+                    ),
+                  ],
+                ),
               );
             } else {
-              context.go('/main'); // 이미 즐겨찾기 상태면 그냥 나가기
+              context.go('/main');
             }
           },
         ),
-        title: Text(guide.category ?? '분류 없음'),
-        backgroundColor: Colors.white,
-        elevation: 1,
-        iconTheme: const IconThemeData(color: Colors.black),
-        titleTextStyle: const TextStyle(
-          color: Colors.black,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
+        title: Text(
+          guide.category ?? '분류 없음',
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
           IconButton(
-            icon: Icon(isFavorited ? Icons.star : Icons.star_border,
-                color: Color(0xFF5B8B4B)),
-            onPressed: _toggleFavorite, // 즐겨찾기 상태 토글 함수
+            icon: Icon(
+              isFavorited ? Icons.star : Icons.star_border,
+              color: const Color(0xFF5B8B4B),
+            ),
+            onPressed: _toggleFavorite,
           ),
         ],
       ),
@@ -299,28 +323,57 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  ...guide.messages.map((msg) => Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 280),
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF5B8B4B),
-                        borderRadius: BorderRadius.circular(12),
+                  ...guide.messages
+                      .map((msg) => msg.replaceAll('end', '').trim())
+                      .where((msg) =>
+                  msg.isNotEmpty &&
+                      !msg.startsWith('[Disposal]') &&
+                      msg != 'end')
+                      .map((raw) {
+                    String content = raw;
+                    bool isCategory = false;
+                    bool isSubcategory = false;
+                    bool isReward = false;
+
+                    if (content.startsWith('[Category]')) {
+                      isCategory = true;
+                      content = content.replaceFirst('[Category]', '').trim();
+                    } else if (content.startsWith('[Subcategory]')) {
+                      isSubcategory = true;
+                      content = content.replaceFirst('[Subcategory]', '').trim();
+                    } else if (content.contains('보상') || content.contains('포인트') || content.contains('리워드')) {
+                      // 보상 메시지임을 단순 텍스트 기반으로 추정
+                      isReward = true;
+                    }
+
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 280),
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF5B8B4B).withOpacity(0.85),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: SelectableText(
+                          content,
+                          style: TextStyle(
+                            fontSize: isCategory || isSubcategory || isReward ? 22 : 18,
+                            fontWeight: isCategory || isSubcategory || isReward
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: Colors.white,
+                            height: 1.5,
+                          ),
+                        ),
                       ),
-                      child: SelectableText(
-                        msg,
-                        style: const TextStyle(fontSize: 20, color: Colors.white),
-                      ),
-                    ),
-                  )),
+                    );
+                  })
                 ],
               ),
             ),
           ),
-
-
           /// ✅ 하단 고정 버튼 영역
           Align(
             alignment: Alignment.bottomCenter,
@@ -335,7 +388,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     child: _ButtonGrid(
                       seedColor: seedColor,
                       isFavorited: isFavorited,
-                      onReward: () => _showSnack(context),
+                      onReward: _loadReward,
                       onReport: () {
                         context.push('/report-error', extra: {
                           'imagePath': widget.imagePath,

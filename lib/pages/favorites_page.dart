@@ -40,14 +40,19 @@ class _FavoritesPageState extends State<FavoritesPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0,
+        surfaceTintColor: Colors.white,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.2),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
             context.go('/main');
           },
         ),
-        title: const Text('즐겨찾기', style: TextStyle(color: Colors.black)),
+        title: const Text(
+          '즐겨찾기',
+          style: TextStyle(color: Colors.black),
+        ),
       ),
       body: FutureBuilder<List<FavoriteChat>>(
         future: _favoritesFuture,
@@ -69,6 +74,15 @@ class _FavoritesPageState extends State<FavoritesPage> {
                 title: item.label ?? item.title, // ✅ label 우선 사용
                 dateTime: formatDate(item.dateTime), // ✅ 날짜 변환
                 onTap: () async {
+                  if (item.id == -1) {
+                    // 🚨 잘못된 ID 방어: 로그만 출력하고 이동 막기
+                    print('⚠️ 잘못된 favorite ID: ${item.id}');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('이 항목의 상세 정보를 불러올 수 없습니다.')),
+                    );
+                    return;
+                  }
+
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -80,6 +94,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                     _refreshFavorites(); // ✅ 삭제 후 새로고침
                   }
                 },
+
               );
             },
           );

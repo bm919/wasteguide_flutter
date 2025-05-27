@@ -3,14 +3,16 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import 'dart:core';
+import 'package:recycling_helper/providers/auth_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends ConsumerState<ProfilePage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -29,26 +31,32 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadUserInfo() async {
     final user = await ApiService.getUserInfo();
     if (user != null) {
+      print('🔍 서버 응답 region 값: ${user['region']}');
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('username', user['username'] ?? '');
+
+      final rawRegion = user['current_location_id']?.toString().trim();
+      final validRegions = ['서울시', '춘천시', '원주시', '남양주시'];
 
       setState(() {
         _username = user['username'] ?? '알 수 없음';
         _emailController.text = user['email'] ?? '';
-        final region = user['region'] ?? '서울시';
-        _region = ['서울시', '춘천시', '원주시', '남양주시'].contains(region) ? region : '서울시';
+        _region = validRegions.contains(rawRegion) ? rawRegion! : '서울시';
       });
+
+      print('✅ 서버 응답 지역 (current_location_id): $_region');
     }
   }
+
 
   void _tryEdit() {
     setState(() => _isEditing = true);
   }
 
-  void _tryDelete() {
-    final TextEditingController confirmController = TextEditingController();
+  void _tryDelete() async {
+    final confirmController = TextEditingController();
 
-    showDialog(
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
@@ -70,27 +78,14 @@ class _ProfilePageState extends State<ProfilePage> {
               backgroundColor: Colors.grey[200],
               foregroundColor: seedColor,
             ),
-            onPressed: () async {
-              if (confirmController.text != '탈퇴') {
+            onPressed: () {
+              if (confirmController.text.trim() != '탈퇴') {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('"탈퇴"라고 정확히 입력해야 합니다.')),
                 );
                 return;
               }
-              Navigator.of(context).pop();
-              final success = await ApiService.deleteUser();
-              if (success && mounted) {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.remove('token');
-                context.go('/login');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('탈퇴가 완료되었습니다.')),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('탈퇴에 실패했습니다.')),
-                );
-              }
+              Navigator.of(context).pop(true); // 탈퇴 진행
             },
             child: const Text('탈퇴하기'),
           ),
@@ -99,15 +94,31 @@ class _ProfilePageState extends State<ProfilePage> {
               backgroundColor: Colors.grey[200],
               foregroundColor: seedColor,
             ),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('취소'),
           ),
         ],
       ),
     );
+
+    if (result == true) {
+      final success = await ApiService.deleteUser();
+      if (success && mounted) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('token');
+        ref.read(authProvider.notifier).logout();
+
+        // ✅ 이제 context 안전하니 go 가능!
+        if (mounted) context.go('/login');
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('탈퇴에 실패했습니다.')),
+          );
+        }
+      }
+    }
   }
-
-
   void _logout() {
     context.go('/login');
   }
@@ -222,7 +233,7 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 24),
             ],
             DropdownButtonFormField<String>(
-              value: _region,
+              value: _region.isNotEmpty ? _region : null,
               items: ['서울시', '춘천시', '원주시', '남양주시']
                   .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                   .toList(),

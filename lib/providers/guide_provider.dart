@@ -114,6 +114,7 @@ class GuideNotifier extends StateNotifier<GuideState> {
       label: json['label'],
       rule: json['rule'],
       chat_id: json['chat_id'],
+      messages: state.messages,
     );
   }
 
@@ -127,6 +128,7 @@ class GuideNotifier extends StateNotifier<GuideState> {
       reward: '',
       category: category,
       source: source,
+      messages: state.messages,
     );
   }
 

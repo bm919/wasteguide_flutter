@@ -323,19 +323,18 @@ class ApiService {
     final token = await login(username, password);
     return token != null;
   }
-
   static Future<bool> toggleFavorite({
     required int chatId,
     required bool isAdding,
+    int? favoriteId,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     final uri = isAdding
         ? Uri.parse('$baseUrl/api/favorite-chat-action/')
-        : Uri.parse('$baseUrl/api/favorite-chat-action/?chat_id=$chatId');
+        : Uri.parse('$baseUrl/api/favorite-chat-action/$favoriteId/'); // ✅ 고정된 삭제 URL
     print('📤 즐겨찾기 ${isAdding ? '추가' : '삭제'} 요청 URL: $uri');
     print('📤 chatId: $chatId');
-
     final response = await (isAdding
         ? http.post(
       uri,
@@ -351,14 +350,12 @@ class ApiService {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({"chat_id": chatId}),
     ));
-
     print('📡 즐겨찾기 ${isAdding ? '추가' : '삭제'} 요청 status: ${response.statusCode}');
     print('📦 응답 body: ${response.body}');
-
     return response.statusCode >= 200 && response.statusCode < 300;
   }
+
 
   // 목록 조회
   static Future<List<FavoriteChat>> fetchFavoriteChats() async {
@@ -373,31 +370,90 @@ class ApiService {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final List data = jsonDecode(response.body);
-      return data.map((e) => FavoriteChat.fromJson(e)).toList();
+      for (final item in data) {
+        print('📄 즐겨찾기 항목: ${jsonEncode(item)}');
+      }
+      return data.map((e) => FavoriteChat.fromListJson(e)).toList();
     } else {
       print('❌ 목록 조회 실패: ${response.body}');
       return [];
     }
   }
-
 // 상세 조회
-  static Future<FavoriteChat?> fetchFavoriteChatDetail(int id) async {
+  static Future<FavoriteChat?> fetchFavoriteChatDetail(int favoriteId) async {
+    final uri = Uri.parse('$baseUrl/api/favorite-chat/$favoriteId/');
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
-    final uri = Uri.parse('$baseUrl/api/favorite-chat/$id/');
-    final response = await http.get(
-      uri,
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    print('📤 [요청] GET $uri');
-    print('📤 [요청 헤더] Authorization: Bearer $token');
 
-    print('📥 [응답 status] ${response.statusCode}');
-    print('📥 [응답 body] ${response.body}');
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return FavoriteChat.fromJson(jsonDecode(response.body));
-    } else {
-      print('❌ 상세 조회 실패: ${response.body}');
+    if (token == null) {
+      print('❌ 토큰이 없습니다. 로그인 필요');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('📥 [응답 status] ${response.statusCode}');
+      print('📥 [응답 body] ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final favorite = data['favorite'];
+        final reward = data['reward'];
+        return FavoriteChat.fromJson(favorite, reward: reward); // ✅ reward 포함
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print('❌ 예외 발생: $e');
+      return null;
+    }
+  }
+  static Future<Map<String, dynamic>?> queryReward({
+    required String label,
+    required int chatId, // chatId가 필요한 구조라면 추가
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/reward/query/');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    print('🚀 [보상 요청 시작]');
+    print('📤 요청 URL: $uri');
+    print('📤 요청 데이터: label=$label, chat_Id=$chatId');
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "label": label,
+          "chat_id": chatId,  // chatId 전달
+        }),
+      );
+
+      print('📡 응답 status: ${response.statusCode}');
+      print('📦 응답 body: ${response.body}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        print('✅ 파싱된 응답: $data');
+        print('🔑 포함된 키: ${data.keys.toList()}'); // 어떤 key가 있는지 보기
+        return data;
+      } else {
+        print('❗ 요청 실패: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ 예외 발생: $e');
       return null;
     }
   }

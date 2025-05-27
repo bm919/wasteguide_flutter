@@ -78,68 +78,59 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     }
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ✅ 상단: 타이틀 + 뒤로가기 (흰 배경 위)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => context.pop(),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    '사진을 촬영합니다.',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ✅ 중간: 카메라 화면 (버튼 위까지 확장됨)
-            Expanded(
-              child: CameraPreview(_controller),
-            ),
-
-            // ✅ 하단: 흰색 배경 위에 버튼들
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.photo_library, size: 36),
-                    onPressed: _pickImageFromGallery, // 기존 context.push(...) 제거
-                  ),
-                  GestureDetector(
-                    onTap: _onShutterPressed,
-                    child: Container(
-                      width: 72,
-                      height: 72,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF5B8B4B),
-                      ),
-                      child: const Icon(
-                          Icons.camera_alt, color: Colors.white, size: 36),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.cameraswitch, size: 36),
-                    onPressed: _switchCamera,
-                  ),
-                ],
-              ),
-            ),
-          ],
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.2),
+        title: const Text('사진을 촬영합니다.'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
         ),
+      ),
+      body: Column(
+        children: [
+          // ✅ 중간: 카메라 화면
+          Expanded(
+            child: CameraPreview(_controller),
+          ),
+
+          // ✅ 하단 버튼 영역
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.photo_library, size: 36),
+                  onPressed: _pickImageFromGallery,
+                ),
+                GestureDetector(
+                  onTap: _onShutterPressed,
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF5B8B4B),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.cameraswitch, size: 36),
+                  onPressed: _switchCamera,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

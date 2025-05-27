@@ -9,10 +9,10 @@ class FavoritesNotifier extends StateNotifier<List<FavoriteChat>> {
   }
 
   void remove(FavoriteChat chat) {
-    state = state.where((c) => c != chat).toList();
+    state = state.where((c) => c.chatId != chat.chatId).toList();
+  }
+
+  bool contains(FavoriteChat chat) {
+    return state.any((c) => c.chatId == chat.chatId);
   }
 }
-
-final favoriteProvider = StateNotifierProvider<FavoritesNotifier, List<FavoriteChat>>(
-      (ref) => FavoritesNotifier(),
-);

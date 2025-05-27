@@ -90,11 +90,13 @@ class GalleryPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0,
+        surfaceTintColor: Colors.white,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.2),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
-            context.pushReplacement('/camera'); // ← 교체
+            context.pushReplacement('/camera');
           },
         ),
         title: const Text(
@@ -104,7 +106,7 @@ class GalleryPage extends ConsumerWidget {
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.black),
-            color: Colors.white, // ✅ 배경 흰색
+            color: Colors.white,
             onSelected: (value) async {
               final prefs = await SharedPreferences.getInstance();
               await prefs.setString('image_quality', value);

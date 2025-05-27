@@ -7,14 +7,17 @@ void main() {
   runApp(const ProviderScope(child: WasteGuideApp()));
 }
 
-class WasteGuideApp extends StatelessWidget {
+class WasteGuideApp extends ConsumerWidget {
   const WasteGuideApp({super.key});
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final goRouter = ref.watch(routerProvider); // 여기!
+
     return MaterialApp.router(
       title: 'Waste Guide',
       theme: theme,
-      routerConfig: router,
+      routerConfig: goRouter,
       debugShowCheckedModeBanner: false,
     );
   }
